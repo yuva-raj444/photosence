@@ -1,4 +1,4 @@
-# ClipGallery
+# Photosense
 
 An Android app for searching your photos with natural-language queries.
 Photo embeddings are generated on-device, so the app works offline entirely.
