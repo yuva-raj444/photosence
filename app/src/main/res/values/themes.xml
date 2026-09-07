@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.ClipGallery" parent="Theme.MaterialComponents.DayNight" />
+</resources>

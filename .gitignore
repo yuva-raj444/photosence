@@ -1,0 +1,36 @@
+# Gradle
+.gradle/
+**/build/
+
+# Local SDK and machine-specific configuration
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Android build outputs and native intermediates
+.externalNativeBuild/
+.cxx/
+captures/
+
+# Kotlin
+.kotlin/
+
+# Signing and release artifacts
+*.jks
+*.keystore
+*.apk
+*.aab
+
+# Local ML model binaries
+app/src/main/assets/models/*.ort
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Crash logs
+*.log
