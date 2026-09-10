@@ -8,28 +8,25 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-import android.view.Menu
-import android.view.MenuItem
-import android.widget.SearchView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
+import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.example.clipgallery.adapters.AlbumAdapter
 import com.example.clipgallery.data.AppDatabase
 import com.example.clipgallery.ml.ClipEmbedder
+import com.example.clipgallery.ui.AlbumInfoUi
+import com.example.clipgallery.ui.AlbumsScreen
+import com.example.clipgallery.ui.AppleTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
     private lateinit var db: AppDatabase
     private lateinit var embedder: ClipEmbedder
-    private lateinit var recyclerView: RecyclerView
     private var albums: List<AlbumInfo> = emptyList()
 
     private val requestPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -38,19 +35,18 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
         db = AppDatabase.get(this)
-        recyclerView = findViewById(R.id.recyclerAlbums)
-        recyclerView.layoutManager = GridLayoutManager(this, 2)
-
-        findViewById<SearchView>(R.id.searchView).setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                if (!query.isNullOrBlank()) runSearch(query)
-                return true
+        setContent {
+            AppleTheme {
+                AlbumsScreen(
+                    albums = albums.map { AlbumInfoUi(it.id, it.name, it.coverUri, it.count) },
+                    onAlbumClick = { album -> startActivity(Intent(this, AlbumActivity::class.java).apply { putExtra("albumId", album.id); putExtra("albumName", album.name) }) },
+                    onSearch = { query -> if (query.isNotBlank()) runSearch(query) },
+                    onIndex = { startActivity(Intent(this, IndexAlbumsActivity::class.java)) },
+                    onScope = { startActivity(Intent(this, SearchFilterActivity::class.java)) }
+                )
             }
-            override fun onQueryTextChange(newText: String?) = false
-        })
+        }
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -75,30 +71,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.main_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.action_index_albums -> startActivity(Intent(this, IndexAlbumsActivity::class.java))
-            R.id.action_search_filter -> startActivity(Intent(this, SearchFilterActivity::class.java))
-        }
-        return true
-    }
-
     private fun loadAlbums() {
         lifecycleScope.launch(Dispatchers.IO) {
             albums = MediaStoreHelper.getAlbums(this@MainActivity)
-            withContext(Dispatchers.Main) {
-                recyclerView.adapter = AlbumAdapter(albums) { album ->
-                    val intent = Intent(this@MainActivity, AlbumActivity::class.java)
-                    intent.putExtra("albumId", album.id)
-                    intent.putExtra("albumName", album.name)
-                    startActivity(intent)
-                }
-            }
+            withContext(Dispatchers.Main) { setContent { AppleTheme { AlbumsScreen(albums.map { AlbumInfoUi(it.id, it.name, it.coverUri, it.count) }, { album -> startActivity(Intent(this@MainActivity, AlbumActivity::class.java).apply { putExtra("albumId", album.id); putExtra("albumName", album.name) }) }, { query -> if (query.isNotBlank()) runSearch(query) }, { startActivity(Intent(this@MainActivity, IndexAlbumsActivity::class.java)) }, { startActivity(Intent(this@MainActivity, SearchFilterActivity::class.java)) }) } } }
         }
     }
 
@@ -124,6 +100,7 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 val intent = Intent(this@MainActivity, SearchResultsActivity::class.java)
                 intent.putParcelableArrayListExtra("results", ArrayList<Uri>(ranked))
+                intent.putExtra("query", query)
                 startActivity(intent)
             }
         }

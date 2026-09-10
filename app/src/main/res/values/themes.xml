@@ -1,3 +1,8 @@
 <resources>
-    <style name="Theme.ClipGallery" parent="Theme.MaterialComponents.DayNight" />
+    <style name="Theme.ClipGallery" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
 </resources>

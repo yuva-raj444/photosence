@@ -1,42 +1,37 @@
 package com.example.clipgallery
 
 import android.os.Bundle
-import android.view.View
-import android.widget.Button
-import android.widget.ProgressBar
-import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.example.clipgallery.adapters.AlbumCheckboxAdapter
 import com.example.clipgallery.data.AppDatabase
 import com.example.clipgallery.data.IndexedAlbum
 import com.example.clipgallery.data.PhotoEmbedding
 import com.example.clipgallery.ml.ClipEmbedder
+import com.example.clipgallery.ui.AppleTheme
+import com.example.clipgallery.ui.IndexFoldersScreen
+import com.example.clipgallery.ui.IndexFolderUi
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class IndexAlbumsActivity : AppCompatActivity() {
+class IndexAlbumsActivity : ComponentActivity() {
 
     private lateinit var db: AppDatabase
     private lateinit var embedder: ClipEmbedder
-    private lateinit var progressBar: ProgressBar
-    private lateinit var statusText: TextView
     private var albums: List<AlbumInfo> = emptyList()
-    private val selected = mutableSetOf<Long>()
+    private var selected by mutableStateOf<Set<Long>>(emptySet())
+    private var folders by mutableStateOf<List<IndexFolderUi>>(emptyList())
+    private var status by mutableStateOf("Select folders to index")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_index_albums)
         db = AppDatabase.get(this)
-        progressBar = findViewById(R.id.progressBar)
-        statusText = findViewById(R.id.statusText)
-
-        val recyclerView = findViewById<RecyclerView>(R.id.recyclerAlbumsCheck)
-        recyclerView.layoutManager = LinearLayoutManager(this)
+        setContent { AppleTheme { IndexFoldersScreen(folders, selected, status, onDone = { finish() }, onIndex = { indexSelected() }, onSelectionChanged = { selected = it }) } }
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -53,13 +48,11 @@ class IndexAlbumsActivity : AppCompatActivity() {
             }
             albums = MediaStoreHelper.getAlbums(this@IndexAlbumsActivity)
             withContext(Dispatchers.Main) {
-                recyclerView.adapter = AlbumCheckboxAdapter(albums) { album, checked ->
-                    if (checked) selected.add(album.id) else selected.remove(album.id)
-                }
+                folders = albums.map { IndexFolderUi(it.id, it.name, it.count) }
+                selected = db.dao().getIndexedAlbums().map { it.albumId }.toSet()
+                status = "Ready"
             }
         }
-
-        findViewById<Button>(R.id.btnIndex).setOnClickListener { indexSelected() }
     }
 
     private fun indexSelected() {
@@ -68,15 +61,13 @@ class IndexAlbumsActivity : AppCompatActivity() {
             Toast.makeText(this, "Select at least one album", Toast.LENGTH_SHORT).show()
             return
         }
-        progressBar.visibility = View.VISIBLE
+        status = "Starting indexing..."
         lifecycleScope.launch(Dispatchers.IO) {
             for (album in toIndex) {
                 db.dao().insertAlbum(IndexedAlbum(album.id, album.name, true))
                 val photos = MediaStoreHelper.getPhotosInAlbum(this@IndexAlbumsActivity, album.id)
                 photos.forEachIndexed { idx, photo ->
-                    withContext(Dispatchers.Main) {
-                        statusText.text = "Indexing ${album.name}: ${idx + 1}/${photos.size}"
-                    }
+                    withContext(Dispatchers.Main) { status = "Indexing ${album.name}: ${idx + 1}/${photos.size}" }
                     val bitmap = MediaStoreHelper.getBitmap(this@IndexAlbumsActivity, photo.uri) ?: return@forEachIndexed
                     val embedding = embedder.embedImage(bitmap)
                     db.dao().insertPhoto(PhotoEmbedding(photo.id, album.id, embedding.toByteArray()))
@@ -84,8 +75,7 @@ class IndexAlbumsActivity : AppCompatActivity() {
                 }
             }
             withContext(Dispatchers.Main) {
-                progressBar.visibility = View.GONE
-                statusText.text = "Done"
+                status = "Done"
                 Toast.makeText(this@IndexAlbumsActivity, "Indexing complete", Toast.LENGTH_SHORT).show()
             }
         }

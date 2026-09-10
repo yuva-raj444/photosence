@@ -32,6 +32,32 @@ The tokenizer files are already included in `app/src/main/assets/tokenizer/`.
 Indexing and search run locally on the device. The app does not upload photos
 or search queries.
 
+## Release a signed APK
+
+Create a private release keystore once:
+
+```powershell
+keytool -genkeypair -v -keystore clipgallery-release.jks -alias clipgallery -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Set these environment variables before building:
+
+```text
+RELEASE_KEYSTORE_FILE
+RELEASE_STORE_PASSWORD
+RELEASE_KEY_ALIAS
+RELEASE_KEY_PASSWORD
+```
+
+Then run:
+
+```powershell
+.\gradlew.bat assembleRelease
+```
+
+The signed APK is generated at `app/build/outputs/apk/release/app-release.apk`.
+Never commit the keystore or passwords. Upload the APK through a GitHub Release.
+
 ## Project structure
 
 - `app/src/main/java/.../MainActivity.kt`: photo search screen
