@@ -11,8 +11,7 @@ Photo embeddings are generated on-device, so the app works offline entirely.
 
 ## Model setup
 
-The model binaries are intentionally not stored in GitHub. Obtain the
-required MobileCLIP v2 files and place them here:
+The model binaries are intentionally not stored in GitHub. 
 
 ```text
 app/src/main/assets/models/clip-image-int8.ort
